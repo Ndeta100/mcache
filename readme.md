@@ -6,7 +6,5 @@ This is a small personal key value pair for caching to be used for my personal p
 
 ## Features
 
-### For Users
-
-- **GET**: Use.
-- **Put**: Users can create accounts, log in, and manage their bookings.
+- **GET**: Get the element using key
+- **SET**: Set element and key to cache store

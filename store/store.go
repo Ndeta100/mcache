@@ -1,6 +1,8 @@
 package store
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,7 +35,11 @@ func NewCache(options config.CacheOptions) *Cache {
 func (c *Cache) Set(key string, value interface{}) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-
+	// Strictly enforce capacity limit: If at capacity, do not add new items
+	if len(c.store) >= c.capacity {
+		fmt.Printf("Cache capacity %d reached, cannot add new item with key '%s'\n", c.capacity, key)
+		return
+	}
 	// Calculate expiration time
 	var expiration int64
 	if c.ttl > 0 {
@@ -104,4 +110,24 @@ func (c *Cache) getExpiration() int64 {
 // StopCleanup stops the background cleanup goroutine.
 func (c *Cache) StopCleanup() {
 	close(c.stopClean)
+}
+
+func (c *Cache) String() string {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "Cache{capacity: %d, items: %d, ", c.capacity, len(c.store))
+
+	if c.ttl > 0 {
+		fmt.Fprintf(&b, "ttl: %v, ", c.ttl)
+	}
+
+	b.WriteString("items: [")
+	for k, v := range c.store {
+		fmt.Fprintf(&b, "{%s: %v (expires: %v)}, ", k, v.Value, time.Unix(v.Expiration, 0))
+	}
+	b.WriteString("]}")
+
+	return b.String()
 }
