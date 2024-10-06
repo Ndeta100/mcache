@@ -70,7 +70,7 @@ func (c *Cache) Set(key string, value interface{}) {
 	// Add new item to the cache
 	c.store[key] = Item{
 		Value:      value,
-		Expiration: int64(expiration), // Added trailing comma for proper formatting
+		Expiration: int64(expiration),
 	}
 	c.snapshotchange = true
 	c.LogOperation(key, value)
@@ -89,6 +89,18 @@ func (c *Cache) Get(key string) (interface{}, bool) {
 	}
 
 	return item.Value, true
+}
+
+func (c *Cache) Delete(key string) bool {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	_, found := c.store[key]
+	if !found {
+		fmt.Printf("item with key %s not found", key)
+	}
+	delete(c.store, key)
+	c.snapshotchange = true
+	return true
 }
 
 // SaveToDisk saves the current cache state to a binary file.
@@ -180,7 +192,7 @@ func (c *Cache) LogOperation(key string, value interface{}) {
 
 // startSnapshotRoutine starts a Goroutine to periodically save the cache to disk.
 func (c *Cache) startSnapshotRoutine() {
-	ticker := time.NewTicker(1 * time.Minute) // Snapshot interval: 1 minute
+	ticker := time.NewTicker(1 * time.Second) // Snapshot interval: 1 minute
 	defer ticker.Stop()
 
 	for {
