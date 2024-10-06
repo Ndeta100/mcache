@@ -2,6 +2,7 @@ package store
 
 import (
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -111,20 +112,32 @@ func TestCacheConcurrency(t *testing.T) {
 	}
 	cache := NewCache(cfgCache)
 
-	done := make(chan bool)
+	// Create a WaitGroup
+	var wg sync.WaitGroup
+
+	// Set the number of goroutines we're going to run
+	wg.Add(10)
 
 	// Run multiple goroutines to access the cache concurrently
 	for i := 0; i < 10; i++ {
 		go func(n int) {
+			// Ensure the WaitGroup is decremented when the goroutine completes
+			defer wg.Done()
+
 			key := "key" + strconv.Itoa(n)
 			cache.Set(key, n)
-			cache.Get(key)
-			done <- true
+			value, found := cache.Get(key)
+
+			// Add some assertions
+			if !found {
+				t.Errorf("Key %s was not found in the cache", key)
+			}
+			if value != n {
+				t.Errorf("Expected value %d for key %s, but got %v", n, key, value)
+			}
 		}(i)
 	}
 
 	// Wait for all goroutines to complete
-	for i := 0; i < 10; i++ {
-		<-done
-	}
+	wg.Wait()
 }

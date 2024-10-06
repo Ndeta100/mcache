@@ -15,13 +15,13 @@ func main() {
 		Capacity: 10,
 	}
 	cache := store.NewCache(cfgcache)
-
+	cache.Delete("key_0")
 	// for i := 0; i < 12; i++ {
 	// 	cache.Set(fmt.Sprintf("key_%v", i), fmt.Sprintf("Banana_%v", i))
 	// }
 	// Get the value from the cache
 	// value, found := cache.Get("keyq")
-	cache.SaveToDisk()
+
 	fmt.Println(cache.String())
 	// if found {
 	// 	fmt.Println("Found value:", value)

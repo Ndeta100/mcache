@@ -9,43 +9,29 @@ type Command struct {
 	Name string
 	Args string
 }
-type File struct {
-	Commands []Command
-}
 
-func (f File) String() string {
-	var sb strings.Builder
-	for _, cmd := range f.Commands {
-		fmt.Fprintln(&sb, cmd.String())
+func ParseCommand(input string) (*Command, error) {
+	parts := strings.Fields(input)
+	if len(parts) == 0 {
+		return nil, fmt.Errorf("ERROR: Empty command")
 	}
 
-	return sb.String()
+	return &Command{
+		Name: strings.ToUpper(parts[0]),
+		Args: strings.Join(parts[1:], " "),
+	}, nil
 }
-func (c Command) String() string {
-	var sb strings.Builder
+
+func (c *Command) Validate() error {
 	switch c.Name {
-	case "model":
-		fmt.Fprintf(&sb, "FROM %s", c.Args)
-	case "license", "template", "system", "adapter":
-		fmt.Fprintf(&sb, "%s %s", strings.ToUpper(c.Name), quote(c.Args))
-	case "message":
-		role, message, _ := strings.Cut(c.Args, ": ")
-		fmt.Fprintf(&sb, "MESSAGE %s %s", role, quote(message))
-	default:
-		fmt.Fprintf(&sb, "PARAMETER %s %s", c.Name, quote(c.Args))
-	}
-
-	return sb.String()
-}
-
-func quote(s string) string {
-	if strings.Contains(s, "\n") || strings.HasPrefix(s, " ") || strings.HasSuffix(s, " ") {
-		if strings.Contains(s, "\"") {
-			return `"""` + s + `"""`
+	case "SET":
+		if len(strings.Fields(c.Args)) != 2 {
+			return fmt.Errorf("ERROR: SET requires key and value")
 		}
-
-		return `"` + s + `"`
+	case "GET", "DEL":
+		if len(strings.Fields(c.Args)) != 1 {
+			return fmt.Errorf("ERROR: %s requires key", c.Name)
+		}
 	}
-
-	return s
+	return nil
 }
