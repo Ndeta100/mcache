@@ -11,11 +11,12 @@ import (
 
 func main() {
 	cfgcache := config.CacheOptions{
-		TTL:      time.Second * 10,
+		TTL:      time.Second * 1,
 		Capacity: 10,
 	}
 	cache := store.NewCache(cfgcache)
 	cache.Delete("key_0")
+	cache.Set("key_0", "value_0")
 	// for i := 0; i < 12; i++ {
 	// 	cache.Set(fmt.Sprintf("key_%v", i), fmt.Sprintf("Banana_%v", i))
 	// }
@@ -28,8 +29,10 @@ func main() {
 	// } else {
 	// 	fmt.Println("Value not found or expired")
 	// }
-
-	server := server.NewServer()
-	server.Start()
+	// Initialize and start the server
+	srv := server.NewServer(cache)
+	if err := srv.Start(); err != nil {
+		panic(err)
+	}
 
 }

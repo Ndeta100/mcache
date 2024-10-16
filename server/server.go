@@ -1,10 +1,14 @@
 package server
 
 import (
+	"bufio"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/Ndeta100/config"
+	"github.com/Ndeta100/handler"
+	"github.com/Ndeta100/store"
 )
 
 type Server struct {
@@ -12,13 +16,15 @@ type Server struct {
 	listenAddr string
 	ln         net.Listener
 	quitch     chan struct{}
+	cache      *store.Cache
 }
 
-func NewServer() *Server {
+func NewServer(cache *store.Cache) *Server {
 	// Initialize the Server instance
 	s := &Server{
 		cfg:    config.GetDefaultConfig(), // Or use config.GetDefaultConfig()
 		quitch: make(chan struct{}),
+		cache:  cache,
 	}
 	// Now that s is initialized, you can access s.cfg
 	s.listenAddr = fmt.Sprintf("%s:%d", s.cfg.Network.Host, s.cfg.Network.Port)
@@ -28,12 +34,14 @@ func NewServer() *Server {
 func (s *Server) Start() error {
 	ln, err := net.Listen("tcp", s.listenAddr)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to start server: %v", err)
 	}
 	defer ln.Close()
 	s.ln = ln
+
+	fmt.Printf("Server started on %s\n", s.listenAddr)
 	go s.acceptLoop()
-	<-s.quitch
+	<-s.quitch // Block until quit signal is received
 	return nil
 }
 
@@ -41,24 +49,38 @@ func (s *Server) acceptLoop() {
 	for {
 		conn, err := s.ln.Accept()
 		if err != nil {
-			fmt.Println("accept error", err)
+			fmt.Println("Accept error:", err)
 			continue
 		}
 		fmt.Println("New connection to the server:", conn.RemoteAddr())
-		go s.readLoop(conn)
+		go s.readLoop(conn) // Start a Goroutine to handle each connection
 	}
 }
 
 func (s *Server) readLoop(conn net.Conn) {
-	buf := make([]byte, 2048)
 	defer conn.Close()
+
+	reader := bufio.NewReader(conn)
+
 	for {
-		n, err := conn.Read(buf)
+		// Read until a newline character is found
+		command, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Println("reade error", err)
-			continue
+			fmt.Println("Read error:", err)
+			return // Exit the loop if there's an error reading from the connection
 		}
-		msg := buf[:n]
-		fmt.Println(string(msg))
+
+		// Trim spaces and newline characters
+		command = strings.TrimSpace(command)
+
+		// Handle the command using the handler
+		response := handler.HandleCommand(command, s.cache)
+
+		// Write the response back to the client with proper newline for telnet
+		_, writeErr := conn.Write([]byte(response + "\r\n"))
+		if writeErr != nil {
+			fmt.Printf("Write error: %v\n", writeErr)
+			return // Exit if unable to write response
+		}
 	}
 }

@@ -44,7 +44,7 @@ func NewCache(options config.CacheOptions) *Cache {
 	return cache
 }
 
-// Insert or update values
+// Set Insert or update values
 func (c *Cache) Set(key string, value interface{}) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -53,6 +53,8 @@ func (c *Cache) Set(key string, value interface{}) {
 		fmt.Printf("Cache capacity %d reached, cannot add new item with key '%s'\n", c.capacity, key)
 		return
 	}
+	// Normalize the key to ensure consistency
+	key = strings.ToLower(key)
 	// Calculate expiration time
 	var expiration int64
 	if c.ttl > 0 {
@@ -80,12 +82,14 @@ func (c *Cache) Set(key string, value interface{}) {
 func (c *Cache) Get(key string) (interface{}, bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+	// Normalize the key to ensure consistency
+	key = strings.ToLower(key)
 	item, found := c.store[key]
 	if !found {
 		return nil, false
 	}
 	if item.Expiration > 0 && time.Now().Unix() > int64(item.Expiration) {
-		return nil, false
+		return "value expire", false
 	}
 
 	return item.Value, true
@@ -94,6 +98,8 @@ func (c *Cache) Get(key string) (interface{}, bool) {
 func (c *Cache) Delete(key string) bool {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+	// Normalize the key to ensure consistency
+	key = strings.ToLower(key)
 	_, found := c.store[key]
 	if !found {
 		fmt.Printf("item with key %s not found", key)
@@ -121,7 +127,12 @@ func (c *Cache) SaveToDisk() {
 		fmt.Printf("Error opening snapshot file: %v\n", err)
 		return
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			fmt.Printf("Error closing file", err)
+		}
+	}(file)
 
 	// Encode the entire cache to the file
 	encoder := gob.NewEncoder(file)
@@ -130,15 +141,22 @@ func (c *Cache) SaveToDisk() {
 		return
 	}
 	if err := file.Sync(); err != nil {
-		fmt.Errorf("error syncing file: %v", err)
+		_ = fmt.Errorf("error syncing file: %v", err)
 		return
 	}
 	if err := os.Rename(temp, c.filename); err != nil {
-		fmt.Errorf("error renaming temp file: %v", err)
+		_ = fmt.Errorf("error renaming temp file: %v", err)
 		return
 	}
 	fmt.Println("Cache snapshot saved to disk successfully.")
 	c.snapshotchange = false
+}
+
+// SaveToDiskAsync saves the cache state asynchronously to avoid blocking.
+func (c *Cache) SaveToDiskAsync() {
+	go func() {
+		c.SaveToDisk()
+	}()
 }
 
 // LoadFromDisk loads the cache state from a binary file.
@@ -167,29 +185,6 @@ func (c *Cache) LoadFromDisk() {
 	fmt.Println("Cache state loaded from disk successfully.")
 }
 
-// SaveToDiskAsync saves the cache state asynchronously to avoid blocking.
-func (c *Cache) SaveToDiskAsync() {
-	go func() {
-		c.SaveToDisk()
-	}()
-}
-
-// LogOperation logs a cache write operation to an append-only log file.
-func (c *Cache) LogOperation(key string, value interface{}) {
-	file, err := os.OpenFile("cache_aof.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Printf("Error opening AOF file: %v\n", err)
-		return
-	}
-	defer file.Close()
-
-	// Record operation in the form of "SET key value"
-	logLine := fmt.Sprintf("SET %s %v\n", key, value)
-	if _, err := file.WriteString(logLine); err != nil {
-		fmt.Printf("Error writing to AOF: %v\n", err)
-	}
-}
-
 // startSnapshotRoutine starts a Goroutine to periodically save the cache to disk.
 func (c *Cache) startSnapshotRoutine() {
 	ticker := time.NewTicker(1 * time.Second) // Snapshot interval: 1 minute
@@ -211,7 +206,23 @@ func (c *Cache) StopSnapshotRoutine() {
 	close(c.stopClean)
 }
 
-// get expirey date
+// LogOperation logs a cache write operation to an append-only log file.
+func (c *Cache) LogOperation(key string, value interface{}) {
+	file, err := os.OpenFile("cache_aof.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Printf("Error opening AOF file: %v\n", err)
+		return
+	}
+	defer file.Close()
+
+	// Record operation in the form of "SET key value"
+	logLine := fmt.Sprintf("SET %s %v\n", key, value)
+	if _, err := file.WriteString(logLine); err != nil {
+		fmt.Printf("Error writing to AOF: %v\n", err)
+	}
+}
+
+// get expire date
 func (c *Cache) getExpiration() int64 {
 	if c.ttl <= 0 {
 		return 0

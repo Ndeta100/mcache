@@ -35,26 +35,26 @@ type CacheOptions struct {
 	Strategy string `yaml:"strategy" default:"LRU"`
 }
 
-// Network settings for the network module.
+// NetworkSettings Network settings for the network module.
 type NetworkSettings struct {
 	Host string `yaml:"host" default:"127.0.0.1"`
 	Port int    `yaml:"port" default:"6379"`
 }
 
-// Logging settings for the logging module.
+// LoggingOptions Logging settings for the logging module.
 type LoggingOptions struct {
 	Level  string `yaml:"level" default:"info"`
 	Format string `yaml:"format" default:"text"`
 }
 
-// Security options for the security module.
+// SecurityOptions Security options for the security module.
 type SecurityOptions struct {
 	// Optional authentication settings.
 	RequireAuth bool   `yaml:"require_auth" default:"false"`
 	Password    string `yaml:"password"` // Only if RequireAuth is true.
 }
 
-// Storage options for persistence (optional).
+// StorageOptions Storage options for persistence (optional).
 type StorageOptions struct {
 	EnablePersistence bool   `yaml:"enable_persistence" default:"false"`
 	StorageFile       string `yaml:"storage_file" default:"cache_data.dat"`
@@ -70,7 +70,10 @@ func LoadConfiguration(cfg *Config, filename string) error {
 		if err != nil {
 			fmt.Println("Error with yaml Marshal", err)
 		}
-		os.WriteFile(filename, data, 0644)
+		err = os.WriteFile(filename, data, 0644)
+		if err != nil {
+			return err
+		}
 	} else {
 		_, err := os.ReadFile(filename)
 		if err != nil {
