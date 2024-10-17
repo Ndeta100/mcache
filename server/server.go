@@ -34,7 +34,7 @@ func NewServer(cache *store.Cache) *Server {
 func (s *Server) Start() error {
 	ln, err := net.Listen("tcp", s.listenAddr)
 	if err != nil {
-		return fmt.Errorf("Failed to start server: %v", err)
+		return fmt.Errorf("failed to start server: %v", err)
 	}
 	defer ln.Close()
 	s.ln = ln
