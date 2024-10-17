@@ -1,5 +1,5 @@
-module github.com/Ndeta100
+module github.com/Ndeta100/mcache
 
-go 1.20
+go 1.23.0
 
-require gopkg.in/yaml.v2 v2.4.0
+require gopkg.in/yaml.v2 v2.4.0 // indirect

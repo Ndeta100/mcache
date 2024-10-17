@@ -6,9 +6,9 @@ import (
 	"net"
 	"strings"
 
-	"github.com/Ndeta100/config"
-	"github.com/Ndeta100/handler"
-	"github.com/Ndeta100/store"
+	"github.com/Ndeta100/mcache/config"
+	"github.com/Ndeta100/mcache/handler"
+	"github.com/Ndeta100/mcache/store"
 )
 
 type Server struct {

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Ndeta100/config"
+	"github.com/Ndeta100/mcache/config"
 )
 
 type Item struct {
