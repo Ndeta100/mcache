@@ -26,6 +26,7 @@ A simple TCP server in Go for managing a key-value cache. This project includes:
 
    ```sh
    git clone https://github.com/Ndeta100/mcache.git
+   go get go get github.com/Ndeta100/mcache@v1.0.1  # or v1.1.0
    cd mcache
    ```
 
